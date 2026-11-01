@@ -1,7 +1,3 @@
-﻿\# Project 02 â€” Docker Containerization
-
-
-
 \## Multi-Container Task Management Application
 
 
