@@ -3,6 +3,18 @@ const pool = require('../config/database');
 
 const router = express.Router();
 
+const VALID_STATUSES = ['pending', 'in_progress', 'completed'];
+const MAX_TITLE_LENGTH = 200;
+
+// Validate request body
+const isValidBody = (body) =>
+  body !== null &&
+  typeof body === 'object' &&
+  !Array.isArray(body);
+
+// Validate positive integer task IDs
+const isValidId = (id) => /^[1-9]\d*$/.test(id);
+
 // GET /api/tasks - Retrieve all tasks
 router.get('/', async (req, res, next) => {
   try {
@@ -25,7 +37,7 @@ router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
+    if (!isValidId(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid task ID',
@@ -56,12 +68,30 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/tasks - Create a task
 router.post('/', async (req, res, next) => {
   try {
-    const { title, description = '' } = req.body;
-
-    if (typeof title !== 'string' || !title.trim()) {
+    if (!isValidBody(req.body)) {
       return res.status(400).json({
         success: false,
-        message: 'Task title is required',
+        message: 'A valid JSON object is required',
+      });
+    }
+
+    const { title, description = '' } = req.body;
+
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      title.trim().length > MAX_TITLE_LENGTH
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Task title is required and must not exceed 200 characters',
+      });
+    }
+
+    if (typeof description !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Task description must be a string',
       });
     }
 
@@ -85,20 +115,29 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, status } = req.body;
 
-    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
+    if (!isValidId(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid task ID',
       });
     }
 
+    if (!isValidBody(req.body)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid JSON object is required',
+      });
+    }
+
+    const { title, description, status } = req.body;
+
     if (
       typeof title !== 'string' ||
       !title.trim() ||
+      title.trim().length > MAX_TITLE_LENGTH ||
       typeof description !== 'string' ||
-      !['pending', 'in_progress', 'completed'].includes(status)
+      !VALID_STATUSES.includes(status)
     ) {
       return res.status(400).json({
         success: false,
@@ -138,7 +177,7 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
+    if (!isValidId(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid task ID',
